@@ -1,1 +1,426 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Mind Pattern - تحدي الأنماط الذكي</title>
+    <meta name="description" content="لعبة ذكاء لاختبار سرعة بديهتك واكتشاف الأنماط المفقودة.">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
 
+    <!-- Social Media Tags -->
+    <meta property="og:title" content="Mind Pattern Game">
+    <meta property="og:description" content="هل يمكنك اكتشاف النمط المفقود؟ تحدى أصدقائك الآن!">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1606326666490-457574d5888e?w=500">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: #f8fafc;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pattern-box { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .option-card { transition: all 0.2s ease; }
+        .option-card:active { transform: scale(0.95); }
+        .hidden { display: none; }
+        
+        @keyframes success {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); background-color: #10b981; color: white; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .correct-anim { animation: success 0.5s ease; }
+        .wrong-anim { animation: shake 0.4s ease; }
+        .timer-bar { transition: width 1s linear, background-color 0.3s; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col p-4">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 py-2">
+            <div class="text-2xl font-bold text-indigo-600 flex items-center gap-2">
+                <span>🧩</span> Mind Pattern
+            </div>
+            <div class="flex gap-2 items-center">
+                <button onclick="toggleMute()" id="mute-btn" class="p-2 bg-white rounded-full shadow-sm border border-gray-100">
+                    <span id="mute-icon">🔊</span>
+                </button>
+                <div class="bg-white px-3 py-1 rounded-full shadow-sm border border-indigo-100">
+                    <span class="text-xs text-gray-400">النقاط:</span>
+                    <span id="score" class="font-bold text-indigo-600">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="flex-grow flex flex-col items-center justify-center text-center space-y-8">
+            <div class="relative">
+                <div class="w-24 h-24 bg-indigo-600 rounded-3xl rotate-12 flex items-center justify-center shadow-xl shadow-indigo-200">
+                    <span class="text-5xl -rotate-12">🧠</span>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight">Mind Pattern</h1>
+                <p class="text-slate-500 text-lg">اللعبة التي تختبر قوة ملاحظتك</p>
+            </div>
+            
+            <div class="grid grid-cols-1 w-full gap-3 px-4 max-w-xs">
+                <button onclick="startGame('easy')" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-100 hover:brightness-105 transition">مستوى سهل</button>
+                <button onclick="startGame('medium')" class="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-amber-100 hover:brightness-105 transition">مستوى متوسط</button>
+                <button onclick="startGame('hard')" class="w-full bg-rose-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-rose-100 hover:brightness-105 transition">مستوى صعب</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="hidden flex-grow flex flex-col">
+            <div class="flex justify-between items-center mb-4 px-2">
+                <div class="px-3 py-1 bg-indigo-50 rounded-lg text-xs font-bold text-indigo-600 uppercase tracking-widest" id="level-display">--</div>
+                <div class="text-sm font-medium text-slate-400">الجولة: <span id="round-display" class="text-slate-900 font-bold">1</span></div>
+            </div>
+
+            <div class="w-full bg-slate-200 h-2.5 rounded-full mb-8 overflow-hidden shadow-inner">
+                <div id="timer-bar" class="timer-bar h-full bg-indigo-500" style="width: 100%"></div>
+            </div>
+
+            <div id="pattern-container" class="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 mb-8 flex justify-center items-center gap-3 min-h-[160px] flex-wrap">
+                <!-- الأنماط هنا -->
+            </div>
+
+            <div id="feedback" class="text-center h-8 mb-4 font-bold transition-all opacity-0"></div>
+
+            <div id="options-grid" class="grid grid-cols-2 gap-4 mb-8">
+                <!-- الخيارات هنا -->
+            </div>
+
+            <div class="mt-auto flex gap-4">
+                <button onclick="useHint()" id="hint-btn" class="flex-1 bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-100 transition disabled:opacity-40">
+                    💡 تلميح (-50)
+                </button>
+                <button onclick="quitGame()" class="flex-1 bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold hover:bg-slate-200 transition">
+                    خروج
+                </button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden flex-grow flex flex-col items-center justify-center text-center space-y-6">
+            <div id="result-icon" class="text-7xl mb-2"></div>
+            <h2 id="result-title" class="text-3xl font-black text-slate-900"></h2>
+            
+            <div class="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200 border border-slate-50 w-full max-w-[300px]">
+                <p class="text-slate-400 text-sm mb-1">النتيجة النهائية</p>
+                <p id="final-score" class="text-6xl font-black text-indigo-600">0</p>
+            </div>
+
+            <div class="w-full max-w-[300px] space-y-3">
+                <button onclick="nativeShare()" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 hover:bg-slate-800 transition">
+                    <span>مشاركة النتيجة</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                    </svg>
+                </button>
+                <button onclick="location.reload()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition">
+                    إعادة اللعب
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- المحرك الصوتي ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let isMuted = false;
+
+        function playSound(freq, type, duration, volume = 0.1) {
+            if (isMuted) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sounds = {
+            click: () => playSound(600, 'sine', 0.1, 0.05),
+            correct: () => { playSound(523.25, 'sine', 0.2); setTimeout(() => playSound(659.25, 'sine', 0.3), 100); },
+            wrong: () => { playSound(220, 'sawtooth', 0.3, 0.05); setTimeout(() => playSound(180, 'sawtooth', 0.3, 0.05), 100); },
+            hint: () => playSound(880, 'sine', 0.2, 0.1),
+            tick: () => playSound(1000, 'sine', 0.05, 0.02)
+        };
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('mute-icon').innerText = isMuted ? '🔇' : '🔊';
+        }
+
+        // --- منطق اللعبة ---
+        let state = {
+            score: 0,
+            level: 'easy',
+            round: 1,
+            timeLeft: 15,
+            maxTime: 15,
+            timerInterval: null,
+            correctAnswer: null,
+            hintUsed: false,
+            currentType: ''
+        };
+
+        const config = {
+            easy: { time: 15, items: 3, types: ['number', 'color'] },
+            medium: { time: 10, items: 4, types: ['number', 'color', 'shape'] },
+            hard: { time: 7, items: 5, types: ['number', 'color', 'shape', 'complex'] }
+        };
+
+        function startGame(difficulty) {
+            sounds.click();
+            state.level = difficulty;
+            state.score = 0;
+            state.round = 1;
+            state.maxTime = config[difficulty].time;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('level-display').innerText = 
+                difficulty === 'easy' ? 'مبتدئ' : difficulty === 'medium' ? 'متمرس' : 'خبير';
+            nextRound();
+        }
+
+        function nextRound() {
+            state.timeLeft = state.maxTime;
+            state.hintUsed = false;
+            document.getElementById('round-display').innerText = state.round;
+            document.getElementById('score').innerText = state.score;
+            document.getElementById('hint-btn').disabled = (state.score < 50);
+            document.getElementById('hint-btn').classList.remove('opacity-50');
+            generatePattern();
+            startTimer();
+        }
+
+        function generatePattern() {
+            const types = config[state.level].types;
+            state.currentType = types[Math.floor(Math.random() * types.length)];
+            const itemsCount = config[state.level].items;
+            const missingIndex = Math.floor(Math.random() * itemsCount);
+            let pattern = [];
+            let options = [];
+            
+            if (state.currentType === 'number') {
+                const start = Math.floor(Math.random() * 10) + 1;
+                const step = Math.floor(Math.random() * 5) + 2;
+                for(let i=0; i<itemsCount; i++) pattern.push(start + (i * step));
+                state.correctAnswer = pattern[missingIndex];
+                options = generateOptions(state.correctAnswer, 'number');
+            } 
+            else if (state.currentType === 'color') {
+                const palette = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                const c1 = palette[Math.floor(Math.random() * palette.length)];
+                let c2 = palette.find(c => c !== c1);
+                for(let i=0; i<itemsCount; i++) pattern.push(i % 2 === 0 ? c1 : c2);
+                state.correctAnswer = pattern[missingIndex];
+                options = generateOptions(state.correctAnswer, 'color', palette);
+            }
+            else if (state.currentType === 'shape') {
+                const shapes = ['circle', 'square', 'triangle'];
+                const s1 = shapes[Math.floor(Math.random() * shapes.length)];
+                const s2 = shapes.find(s => s !== s1);
+                for(let i=0; i<itemsCount; i++) pattern.push(i === (itemsCount-1) ? s2 : s1);
+                state.correctAnswer = pattern[missingIndex];
+                options = generateOptions(state.correctAnswer, 'shape', shapes);
+            }
+            else { 
+                for(let i=1; i<=itemsCount; i++) pattern.push(i * i);
+                state.correctAnswer = pattern[missingIndex];
+                options = generateOptions(state.correctAnswer, 'number');
+            }
+            renderPattern(pattern, missingIndex);
+            renderOptions(options);
+        }
+
+        function generateOptions(correct, type, pool) {
+            let opts = [correct];
+            while(opts.length < 4) {
+                let fake;
+                if(type === 'number') {
+                    fake = correct + (Math.floor(Math.random() * 10) - 5);
+                    if (fake === correct || fake < 1) fake = correct + 3;
+                } else if(type === 'color' || type === 'shape') {
+                    fake = pool[Math.floor(Math.random() * pool.length)];
+                }
+                if(!opts.includes(fake)) opts.push(fake);
+            }
+            return opts.sort(() => Math.random() - 0.5);
+        }
+
+        function renderPattern(pattern, missingIndex) {
+            const container = document.getElementById('pattern-container');
+            container.innerHTML = '';
+            pattern.forEach((val, i) => {
+                const div = document.createElement('div');
+                div.className = "pattern-box w-14 h-14 flex items-center justify-center rounded-2xl font-black text-xl shadow-sm border border-slate-100";
+                if (i === missingIndex) {
+                    div.innerHTML = "?";
+                    div.classList.add("bg-indigo-50", "text-indigo-600", "border-dashed", "border-2", "border-indigo-200");
+                } else {
+                    if (state.currentType === 'number' || state.currentType === 'complex') {
+                        div.innerText = val; div.classList.add("bg-white");
+                    } else if (state.currentType === 'color') {
+                        div.style.backgroundColor = val;
+                    } else if (state.currentType === 'shape') {
+                        div.innerHTML = getShapeSVG(val); div.classList.add("bg-white");
+                    }
+                }
+                container.appendChild(div);
+            });
+        }
+
+        function getShapeSVG(shape) {
+            const c = "#1e293b";
+            if(shape === 'circle') return `<div class="w-7 h-7 rounded-full" style="background:${c}"></div>`;
+            if(shape === 'square') return `<div class="w-7 h-7" style="background:${c}"></div>`;
+            if(shape === 'triangle') return `<div style="width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid ${c}"></div>`;
+        }
+
+        function renderOptions(options) {
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "option-card bg-white p-6 rounded-3xl border-2 border-slate-50 flex items-center justify-center shadow-sm hover:border-indigo-200";
+                btn.dataset.value = opt; // نستخدم dataset لحفظ القيمة برمجياً
+                
+                if (state.currentType === 'number' || state.currentType === 'complex') {
+                    btn.innerText = opt; btn.classList.add("text-2xl", "font-black");
+                } else if (state.currentType === 'color') {
+                    const circle = document.createElement('div');
+                    circle.className = "w-10 h-10 rounded-full shadow-inner";
+                    circle.style.backgroundColor = opt; btn.appendChild(circle);
+                } else if (state.currentType === 'shape') {
+                    btn.innerHTML = getShapeSVG(opt);
+                }
+                btn.onclick = () => checkAnswer(opt, btn);
+                grid.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(answer, element) {
+            clearInterval(state.timerInterval);
+            const feedback = document.getElementById('feedback');
+            if (answer === state.correctAnswer) {
+                sounds.correct();
+                state.score += (state.timeLeft * 10) + 100;
+                state.round++;
+                feedback.innerText = "بطل! إجابة صحيحة ✨";
+                feedback.className = "text-center h-8 mb-4 font-bold text-emerald-500 opacity-100";
+                element.classList.add('border-emerald-500', 'bg-emerald-50', 'correct-anim');
+                setTimeout(() => { feedback.classList.add('opacity-0'); nextRound(); }, 1000);
+            } else {
+                sounds.wrong();
+                feedback.innerText = "أخطأت.. حاول ثانية!";
+                feedback.className = "text-center h-8 mb-4 font-bold text-rose-500 opacity-100";
+                element.classList.add('border-rose-500', 'bg-rose-50', 'wrong-anim');
+                setTimeout(() => endGame(), 1000);
+            }
+        }
+
+        function startTimer() {
+            const bar = document.getElementById('timer-bar');
+            clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timeLeft--;
+                const p = (state.timeLeft / state.maxTime) * 100;
+                bar.style.width = p + "%";
+                if (state.timeLeft <= 3) { sounds.tick(); bar.classList.replace('bg-indigo-500', 'bg-rose-500'); }
+                else { bar.classList.replace('bg-rose-500', 'bg-indigo-500'); }
+                if (state.timeLeft <= 0) { clearInterval(state.timerInterval); sounds.wrong(); endGame(); }
+            }, 1000);
+        }
+
+        // --- إصلاح زر التلميح ---
+        function useHint() {
+            if (state.hintUsed || state.score < 50) return;
+            
+            sounds.hint();
+            state.hintUsed = true;
+            state.score -= 50;
+            document.getElementById('score').innerText = state.score;
+            
+            const options = Array.from(document.querySelectorAll('.option-card'));
+            // الفلترة لاستخراج الخيارات الخاطئة فقط
+            const wrongOptions = options.filter(opt => {
+                // نتحقق من القيمة المخزنة في dataset أو النص
+                const val = opt.dataset.value;
+                return val != state.correctAnswer;
+            });
+
+            // خلط الخيارات الخاطئة وحذف أول اثنين
+            const toDisable = wrongOptions.sort(() => Math.random() - 0.5).slice(0, 2);
+            toDisable.forEach(opt => {
+                opt.style.opacity = "0.2";
+                opt.style.pointerEvents = "none";
+                opt.style.filter = "grayscale(1)";
+            });
+
+            document.getElementById('hint-btn').disabled = true;
+            document.getElementById('hint-btn').classList.add('opacity-50');
+        }
+
+        function endGame() {
+            clearInterval(state.timerInterval);
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('result-title').innerText = state.score > 500 ? "مستوى مذهل!" : "محاولة جيدة!";
+            document.getElementById('result-icon').innerText = state.score > 500 ? "🔥" : "⭐";
+            document.getElementById('final-score').innerText = state.score;
+        }
+
+        // --- المشاركة الشاملة ---
+        async function nativeShare() {
+            const shareData = {
+                title: 'Mind Pattern',
+                text: `لقد حققت ${state.score} نقطة في لعبة Mind Pattern! هل يمكنك هزيمتي؟ العب الآن:`,
+                url: window.location.href
+            };
+
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    // Fallback في حال كان المتصفح لا يدعم المشاركة (مثل بعض نسخ الكمبيوتر)
+                    const dummy = document.createElement('input');
+                    document.body.appendChild(dummy);
+                    dummy.value = shareData.url;
+                    dummy.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(dummy);
+                    alert("تم نسخ رابط اللعبة بنجاح! شاركه مع أصدقائك.");
+                }
+            } catch (err) {
+                console.log('User cancelled or error:', err);
+            }
+        }
+
+        function quitGame() {
+            if(confirm('هل تريد العودة للقائمة؟')) location.reload();
+        }
+    </script>
+</body>
+</html>
